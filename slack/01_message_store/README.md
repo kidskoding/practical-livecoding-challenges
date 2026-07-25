@@ -58,12 +58,12 @@ and returns its id.
 
 ```text
 Input:
-    id = post_message("#general", "ana", "one", 1.0)
-    history("#general")
+    channel = "#general", user = "ana", text = "one", ts = 1.0
 
 Output:
-    [{"id": id, "channel": "#general", "user": "ana", "text": "one",
-      "ts": 1.0, "reply_count": 0, "last_reply_ts": None}]
+    a new id string, and the stored message reads
+    {"id": <that id>, "channel": "#general", "user": "ana", "text": "one",
+     "ts": 1.0, "reply_count": 0, "last_reply_ts": None}
 
 Explanation:
     A freshly posted message carries all seven fields, with the thread
@@ -72,10 +72,12 @@ Explanation:
 
 ##### Example 2
 
+Two calls, one after the other:
+
 ```text
 Input:
-    post_message("#general", "ana", "one", 1.0)
-    post_message("#random",  "cy",  "one", 1.0)
+    channel = "#general", user = "ana", text = "one", ts = 1.0
+    channel = "#random",  user = "cy",  text = "one", ts = 1.0
 
 Output:
     two different id strings
@@ -106,17 +108,21 @@ messages, **newest first**.
 
 #### Examples
 
+All three examples run against this channel:
+
+```text
+#general holds  "one" (ana, ts 1.0, id = oldest)
+                "two" (bo,  ts 2.0)
+                "three" (ana, ts 3.0, id = third)
+```
+
 ##### Example 1
 
 ```text
 Input:
-    oldest = post_message("#general", "ana", "one",   1.0)
-             post_message("#general", "bo",  "two",   2.0)
-    third  = post_message("#general", "ana", "three", 3.0)
-
-    history("#general")
-    history("#general", limit=2)
-    history("#general", limit=99)
+    channel = "#general"
+    channel = "#general", limit = 2
+    channel = "#general", limit = 99
 
 Output:
     ["three", "two", "one"]
@@ -132,10 +138,8 @@ Explanation:
 
 ```text
 Input:
-    (same channel as above)
-
-    history("#general", limit=1, before=third)
-    history("#general", before=third)
+    channel = "#general", limit = 1, before = third
+    channel = "#general", before = third
 
 Output:
     ["two"]
@@ -151,10 +155,8 @@ Explanation:
 
 ```text
 Input:
-    (same channel as above)
-
-    history("#general", before=oldest)
-    history("#nope")
+    channel = "#general", before = oldest
+    channel = "#nope"
 
 Output:
     []
@@ -186,33 +188,37 @@ and returns the reply's own id.
 
 #### Examples
 
+Both examples run against this message:
+
+```text
+#general holds  "deploy is red" (ana, ts 1.0, id = parent)
+```
+
 ##### Example 1
 
 ```text
 Input:
-    parent = post_message("#general", "ana", "deploy is red", 1.0)
-             reply(parent, "bo", "looking", 2.0)
-
-    history("#general")
+    parent_id = parent, user = "bo", text = "looking", ts = 2.0
 
 Output:
-    a new id, different from parent
-    ["deploy is red"]
+    a new id, different from parent, in channel "#general"
+    the parent now reads reply_count = 1, last_reply_ts = 2.0
 
 Explanation:
-    The parent now reads reply_count = 1, last_reply_ts = 2.0, and the reply
-    sits in channel "#general" — inherited, nobody passed it. The reply
-    itself never surfaces in the channel, only in its thread.
+    The reply's channel is inherited — nobody passed one. The parent's
+    counters move on every reply so the channel view can render "1 reply"
+    without loading the thread.
 ```
 
 ##### Example 2
 
+Three calls, one after the other:
+
 ```text
 Input:
-    parent = post_message("#general", "ana", "deploy is red", 1.0)
-             reply(parent, "bo",  "looking",   2.0)
-             reply(parent, "ana", "fixed",     5.0)
-             reply(parent, "cy",  "late note", 3.0)
+    parent_id = parent, user = "bo",  text = "looking",   ts = 2.0
+    parent_id = parent, user = "ana", text = "fixed",     ts = 5.0
+    parent_id = parent, user = "cy",  text = "late note", ts = 3.0
 
 Output:
     the parent reads reply_count = 3, last_reply_ts = 5.0
@@ -234,15 +240,20 @@ top-level message: the **parent first**, then its replies **oldest-first**.
 
 #### Examples
 
+Both examples run against this channel:
+
+```text
+#general holds  "deploy is red" (ana, ts 1.0, id = parent)
+                  └ "looking" (bo,  ts 2.0)
+                  └ "fixed"   (ana, ts 5.0)
+                "standup in 5" (cy, ts 6.0, id = solo, no replies)
+```
+
 ##### Example 1
 
 ```text
 Input:
-    parent = post_message("#general", "ana", "deploy is red", 1.0)
-             reply(parent, "bo",  "looking", 2.0)
-             reply(parent, "ana", "fixed",   5.0)
-
-    thread(parent)
+    parent_id = parent
 
 Output:
     ["deploy is red", "looking", "fixed"]
@@ -256,9 +267,7 @@ Explanation:
 
 ```text
 Input:
-    solo = post_message("#general", "cy", "standup in 5", 6.0)
-
-    thread(solo)
+    parent_id = solo
 
 Output:
     ["standup in 5"]
@@ -295,11 +304,13 @@ in a given channel. Returns nothing.
 
 ##### Example 1
 
+Three calls, one after the other:
+
 ```text
 Input:
-    mark_read("bo", "#general", 2.0)
-    mark_read("bo", "#general", 5.0)
-    mark_read("bo", "#general", 1.0)
+    user = "bo", channel = "#general", ts = 2.0
+    user = "bo", channel = "#general", ts = 5.0
+    user = "bo", channel = "#general", ts = 1.0
 
 Output:
     bo's marker in #general is 5.0
@@ -311,11 +322,13 @@ Explanation:
 
 ##### Example 2
 
+Three calls, one after the other:
+
 ```text
 Input:
-    mark_read("bo", "#general", 5.0)
-    mark_read("cy", "#general", 1.0)
-    mark_read("bo", "#random",  3.0)
+    user = "bo", channel = "#general", ts = 5.0
+    user = "cy", channel = "#general", ts = 1.0
+    user = "bo", channel = "#random",  ts = 3.0
 
 Output:
     bo/#general = 5.0, cy/#general = 1.0, bo/#random = 3.0
@@ -342,52 +355,48 @@ that channel the user hasn't seen.
 
 #### Examples
 
-Both examples start from this channel:
+Both examples run against this channel:
 
 ```text
-post_message("#general", "ana", "one",   1.0)
-post_message("#general", "bo",  "two",   2.0)
-post_message("#general", "ana", "three", 3.0)
+#general holds  "one"   (ana, ts 1.0)
+                "two"   (bo,  ts 2.0)
+                "three" (ana, ts 3.0)
 ```
 
 ##### Example 1
 
+Nobody has read anything yet:
+
 ```text
 Input:
-    unread_count("bo", "#general")
-    unread_count("cy", "#general")
+    user = "bo", channel = "#general"
+    user = "cy", channel = "#general"
 
 Output:
     2
     3
 
 Explanation:
-    Neither user has read anything, so everything is unread — except that
-    "two" is bo's own message and never counts against bo.
+    Everything is unread — except that "two" is bo's own message and never
+    counts against bo.
 ```
 
 ##### Example 2
 
+Now bo's marker in `#general` is 5.0, having been rewound to 1.0 and ignored:
+
 ```text
 Input:
-    mark_read("bo", "#general", 2.0)
-    unread_count("bo", "#general")
-
-    mark_read("bo", "#general", 1.0)
-    unread_count("bo", "#general")
-
-    unread_count("bo", "#random")
+    user = "bo", channel = "#general"
+    user = "bo", channel = "#random"
 
 Output:
-    1
-    1
+    0
     0
 
 Explanation:
-    The marker is inclusive, so the message at exactly 2.0 is read and only
-    "three" is newer. Rewinding the marker to 1.0 is ignored, so the count
-    stays at 1 rather than going back up to 2. A channel that doesn't exist
-    has no unreads.
+    Everything up to 5.0 is read, so nothing is left. A channel that doesn't
+    exist has no unreads either.
 ```
 
 ---
@@ -408,16 +417,20 @@ contains `query`, **newest first**.
 
 #### Examples
 
+Both examples run against these messages:
+
+```text
+#general holds  "Deploy is red" (ana, ts 1.0)
+                  └ "rolled back" (bo, ts 3.0)
+#random  holds  "redis is slow" (cy, ts 2.0)
+```
+
 ##### Example 1
 
 ```text
 Input:
-    parent = post_message("#general", "ana", "Deploy is red", 1.0)
-             post_message("#random",  "cy",  "redis is slow", 2.0)
-             reply(parent, "bo", "rolled back", 3.0)
-
-    search("RED")
-    search("rolled")
+    query = "RED"
+    query = "rolled"
 
 Output:
     ["redis is slow", "Deploy is red"]
@@ -433,10 +446,8 @@ Explanation:
 
 ```text
 Input:
-    (same messages as above)
-
-    search("red", channel="#general")
-    search("nothing")
+    query = "red", channel = "#general"
+    query = "nothing"
 
 Output:
     ["Deploy is red"]

@@ -150,16 +150,20 @@ Rules for that prose:
 ````markdown
 #### Examples
 
+Both examples run against this channel:
+
+```text
+#general holds  "one"   (ana, ts 1.0, id = oldest)
+                "two"   (bo,  ts 2.0)
+                "three" (ana, ts 3.0, id = third)
+```
+
 ##### Example 1
 
 ```text
 Input:
-    oldest = post_message("#general", "ana", "one",   1.0)
-             post_message("#general", "bo",  "two",   2.0)
-    third  = post_message("#general", "ana", "three", 3.0)
-
-    history("#general", limit=2)
-    history("#general", before=third)
+    channel = "#general", limit = 2
+    channel = "#general", before = third
 
 Output:
     ["three", "two"]
@@ -171,9 +175,27 @@ Explanation:
 ```
 ````
 
-- `Input:` is the call sequence, indented, including whatever setup the case
-  needs. `Output:` lists one result per call, in the same order. Both are plain
-  text, not Python — this is a spec, not a doctest.
+- **`Input:` holds only that function's arguments** — `channel = "#general",
+  limit = 2`, one line per call, no function name, no other function's calls.
+  `Output:` lists one result per call in the same order. Both are plain text,
+  not Python: this is a spec, not a doctest.
+- **Setup goes above the examples, as state, not as calls.** Describe the store
+  the cases run against ("All three examples run against this channel:") in a
+  short block before `##### Example 1`, and let the `Input:` lines be pure
+  arguments. Setup written as `post_message(...)` calls drags another
+  function's signature into an example that isn't about it.
+- Writing setup as state is also what keeps the functions **independently
+  attemptable** — a candidate stuck on 1.1 can still work 1.2, because the
+  preamble hands them the store's contents outright. Don't spell that out in
+  the prompt; the format already says it.
+- **An example never asserts through another function.** Calling `history` to
+  show what `post_message` stored makes `history`'s contract a prerequisite for
+  reading `post_message`'s — and the candidate hasn't written it yet. When the
+  observable result is internal state, describe it: `the stored message reads
+  {...}`, `the parent now reads reply_count = 1`.
+- Where a case needs several calls in sequence (a high-water mark, a counter),
+  say so in one line above the block — "Three calls, one after the other:" —
+  and list the argument sets in order.
 - `Explanation:` goes **inside** the block, last, and only when the output
   isn't self-evident. A case that speaks for itself (`search("nothing")` → `[]`)
   gets no explanation; don't pad one in. Never leave the prose floating outside
@@ -264,6 +286,9 @@ answers.
   near-identical cases read as filler and cost the candidate time.
 - **Explanation prose left outside the block.** It belongs on an
   `Explanation:` line inside the fence, or nowhere.
+- **Asserting through a function the candidate hasn't written.** Setup can use
+  earlier functions; the `Output:` line can't. Ordering the examples so 1.1 is
+  demoed via 1.2 quietly makes the second function a prerequisite for the first.
 - **Don't reach for DSA-repo conventions.** `problem_set/` dirs, namespace
   packages, `pythonpath` wiring, per-category stub files, pytest suites — all of
   that belongs to `../dsa` and friends. Challenges here are one self-contained
