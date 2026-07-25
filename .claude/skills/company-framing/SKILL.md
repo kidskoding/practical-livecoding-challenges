@@ -55,9 +55,10 @@ If a chosen problem would work unchanged for any other company, it isn't framed
   `reply_count` lives on the parent, which is how a real ticket reads.
 - **Bound the scope explicitly.** One in-memory object; no database, no
   network, no concurrency. State it in the prompt so nobody builds a service.
-- **Stage it in independently demoable parts,** each with a time budget. A
-  practical interview is graded partly on shipping something that runs at the
-  30-minute mark.
+- **Stage it in independently demoable parts.** A practical interview is graded
+  partly on having something that runs halfway through. Size the parts against
+  the total duration while choosing the problem — but don't print a per-part
+  clock in the prompt; the candidate should be pacing on progress, not minutes.
 
 ## Hard Rules
 
@@ -93,8 +94,9 @@ questions, and leave them out of the parts.
   prompt failed — the ask is always a plain directive.
 - **Puzzle smuggled in as product.** If the interesting part is an algorithmic
   trick rather than modeling and edge cases, it belongs in the DSA repos.
-- **Time budget written after the fact.** Decide the minutes per part while
-  choosing the problem; a part that can't be built in its budget is a scoping
-  error you'll only find by trying it.
+- **Scope checked after the fact.** Sanity-check the parts against the total
+  duration while choosing the problem — a part that can't be built in the time
+  left for it is a scoping error you'll only find by trying it. Keep that
+  arithmetic to yourself; it doesn't go in the prompt.
 - **Follow-ups leaking into the prompt.** "Later we'll add reactions" invites
   premature abstraction. Keep future work out of the parts entirely.

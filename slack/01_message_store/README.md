@@ -5,7 +5,7 @@ Everything lives in memory in a single `MessageStore` object — no database, no
 threads, no network. Timestamps are supplied by the caller (`ts: float`),
 never generated inside the store, so behavior is reproducible.
 
-A message is a plain `dict`:
+A message is a plain `dict` like the one shown below:
 
 ```python
 {
@@ -26,9 +26,14 @@ Work in `message_store.py`. The method signatures are already stubbed there;
 implement them in part order. How you store things internally is entirely your
 call — that decision is the point of the exercise.
 
+Examples below write results as message texts for brevity; the real return
+value is the list of message dicts.
+
 ---
 
-## Part 1 — channel history (~15 min)
+## Part 1 — channel history
+
+### 1.1 — `post_message`
 
 Write a function called `post_message` that records a new top-level message in a channel
 and returns its id.
@@ -47,14 +52,40 @@ and returns its id.
 - Every stored message carries all seven fields from the shape above.
   `reply_count` starts at `0` and `last_reply_ts` starts at `None`.
 
-```python
-store = MessageStore()
-first = store.post_message("#general", "ana", "one", 1.0)
-second = store.post_message("#general", "bo", "two", 2.0)
+#### Examples
 
-first != second          # True — ids are unique store-wide, not per channel
-store.post_message("#random", "cy", "one", 1.0)   # same text and ts: still a new id
+##### Example 1
+
+```text
+Input:
+    id = post_message("#general", "ana", "one", 1.0)
+    history("#general")
+
+Output:
+    [{"id": id, "channel": "#general", "user": "ana", "text": "one",
+      "ts": 1.0, "reply_count": 0, "last_reply_ts": None}]
+
+Explanation:
+    A freshly posted message carries all seven fields, with the thread
+    fields at their starting values.
 ```
+
+##### Example 2
+
+```text
+Input:
+    post_message("#general", "ana", "one", 1.0)
+    post_message("#random",  "cy",  "one", 1.0)
+
+Output:
+    two different id strings
+
+Explanation:
+    Same text, same timestamp, different channels — still distinct ids.
+    Ids are unique across the whole store, not per channel.
+```
+
+### 1.2 — `history`
 
 Then write a function called `history` that returns one page of a channel's top-level
 messages, **newest first**.
@@ -73,27 +104,72 @@ messages, **newest first**.
 - A `before` cursor pointing at the oldest message in the channel returns `[]`.
 - Replies (Part 2) never appear here — only top-level messages.
 
-```python
-store = MessageStore()
-oldest = store.post_message("#general", "ana", "one", 1.0)
-store.post_message("#general", "bo", "two", 2.0)
-third = store.post_message("#general", "ana", "three", 3.0)
+#### Examples
 
-store.history("#general")                         # three, two, one
-store.history("#general", limit=2)                # three, two
-store.history("#general", limit=99)               # three, two, one — no padding
+##### Example 1
 
-# paging backwards: feed back the last id you were given
-store.history("#general", limit=1, before=third)  # two
-store.history("#general", before=third)           # two, one
+```text
+Input:
+    oldest = post_message("#general", "ana", "one",   1.0)
+             post_message("#general", "bo",  "two",   2.0)
+    third  = post_message("#general", "ana", "three", 3.0)
 
-store.history("#general", before=oldest)          # []  — nothing older
-store.history("#nope")                            # []  — unknown channel
+    history("#general")
+    history("#general", limit=2)
+    history("#general", limit=99)
+
+Output:
+    ["three", "two", "one"]
+    ["three", "two"]
+    ["three", "two", "one"]
+
+Explanation:
+    Newest first. A limit past the end of the channel returns what exists —
+    no padding, no error.
+```
+
+##### Example 2
+
+```text
+Input:
+    (same channel as above)
+
+    history("#general", limit=1, before=third)
+    history("#general", before=third)
+
+Output:
+    ["two"]
+    ["two", "one"]
+
+Explanation:
+    `before` is exclusive, so `third` itself is never in the page. This is
+    how a client walks backwards: render a page, then pass the id of its
+    last message back as the next `before`.
+```
+
+##### Example 3
+
+```text
+Input:
+    (same channel as above)
+
+    history("#general", before=oldest)
+    history("#nope")
+
+Output:
+    []
+    []
+
+Explanation:
+    Nothing is older than `oldest`, and `#nope` has never been posted to.
+    Both are empty pages, not errors.
 ```
 
 ---
 
-## Part 2 — threads (~15 min)
+## Part 2 — threads
+
+### 2.1 — `reply`
 
 Write a function called `reply` that attaches a reply to an existing top-level message
 and returns the reply's own id.
@@ -108,6 +184,46 @@ and returns the reply's own id.
   reply somehow arrives with an older `ts` than one already recorded,
   `last_reply_ts` must not move backwards.
 
+#### Examples
+
+##### Example 1
+
+```text
+Input:
+    parent = post_message("#general", "ana", "deploy is red", 1.0)
+             reply(parent, "bo", "looking", 2.0)
+
+    history("#general")
+
+Output:
+    a new id, different from parent
+    ["deploy is red"]
+
+Explanation:
+    The parent now reads reply_count = 1, last_reply_ts = 2.0, and the reply
+    sits in channel "#general" — inherited, nobody passed it. The reply
+    itself never surfaces in the channel, only in its thread.
+```
+
+##### Example 2
+
+```text
+Input:
+    parent = post_message("#general", "ana", "deploy is red", 1.0)
+             reply(parent, "bo",  "looking",   2.0)
+             reply(parent, "ana", "fixed",     5.0)
+             reply(parent, "cy",  "late note", 3.0)
+
+Output:
+    the parent reads reply_count = 3, last_reply_ts = 5.0
+
+Explanation:
+    The third reply is older than the second. The count still goes up, but
+    last_reply_ts stays at 5.0 — it never moves backwards.
+```
+
+### 2.2 — `thread`
+
 Then write a function called `thread` that returns the full conversation for one
 top-level message: the **parent first**, then its replies **oldest-first**.
 
@@ -116,18 +232,39 @@ top-level message: the **parent first**, then its replies **oldest-first**.
 - The ordering here is deliberately the opposite of `history` — a channel reads
   newest-first, a thread reads top-to-bottom like a transcript.
 
-```python
-store = MessageStore()
-parent = store.post_message("#general", "ana", "deploy is red", 1.0)
-store.reply(parent, "bo", "looking", 2.0)
-store.reply(parent, "ana", "fixed", 5.0)
+#### Examples
 
-store.thread(parent)        # deploy is red, looking, fixed  — parent first
-store.history("#general")   # deploy is red  — replies stay out of the channel
-# that parent dict now reads reply_count == 2, last_reply_ts == 5.0
+##### Example 1
 
-solo = store.post_message("#general", "cy", "standup in 5", 6.0)
-store.thread(solo)          # [standup in 5]  — no replies, just the parent
+```text
+Input:
+    parent = post_message("#general", "ana", "deploy is red", 1.0)
+             reply(parent, "bo",  "looking", 2.0)
+             reply(parent, "ana", "fixed",   5.0)
+
+    thread(parent)
+
+Output:
+    ["deploy is red", "looking", "fixed"]
+
+Explanation:
+    Parent first, then replies oldest-first — the opposite order from
+    history().
+```
+
+##### Example 2
+
+```text
+Input:
+    solo = post_message("#general", "cy", "standup in 5", 6.0)
+
+    thread(solo)
+
+Output:
+    ["standup in 5"]
+
+Explanation:
+    A message with no replies is a one-element thread, not an empty one.
 ```
 
 ### The constraint that matters
@@ -139,7 +276,9 @@ the replies at all.
 
 ---
 
-## Part 3 — unread counts (~15 min)
+## Part 3 — unread counts
+
+### 3.1 — `mark_read`
 
 Write a function called `mark_read` that records how far a given user has read
 in a given channel. Returns nothing.
@@ -151,6 +290,42 @@ in a given channel. Returns nothing.
   through old history can't make read messages unread again.
 - Marking read on a channel the user has never seen, or that has no messages,
   is legal and does nothing surprising.
+
+#### Examples
+
+##### Example 1
+
+```text
+Input:
+    mark_read("bo", "#general", 2.0)
+    mark_read("bo", "#general", 5.0)
+    mark_read("bo", "#general", 1.0)
+
+Output:
+    bo's marker in #general is 5.0
+
+Explanation:
+    The third call is older than what's already recorded, so it's ignored —
+    the marker only ever moves forward.
+```
+
+##### Example 2
+
+```text
+Input:
+    mark_read("bo", "#general", 5.0)
+    mark_read("cy", "#general", 1.0)
+    mark_read("bo", "#random",  3.0)
+
+Output:
+    bo/#general = 5.0, cy/#general = 1.0, bo/#random = 3.0
+
+Explanation:
+    Markers are per (user, channel), so cy's read state never touches bo's.
+    #random has no messages yet, which is still a legal call.
+```
+
+### 3.2 — `unread_count`
 
 Then write a function called `unread_count` that returns how many messages in
 that channel the user hasn't seen.
@@ -165,27 +340,61 @@ that channel the user hasn't seen.
 - Replies do **not** count toward channel unreads. Thread unreads are a
   separate product surface; mention how you'd approach it, don't build it.
 
-```python
-store = MessageStore()
-store.post_message("#general", "ana", "one", 1.0)
-store.post_message("#general", "bo", "two", 2.0)
-store.post_message("#general", "ana", "three", 3.0)
+#### Examples
 
-store.unread_count("bo", "#general")    # 2  — never read; bo's own doesn't count
-store.unread_count("cy", "#general")    # 3  — different user, no marker
+Both examples start from this channel:
 
-store.mark_read("bo", "#general", 2.0)
-store.unread_count("bo", "#general")    # 1  — ts 2.0 is read, only "three" is newer
+```text
+post_message("#general", "ana", "one",   1.0)
+post_message("#general", "bo",  "two",   2.0)
+post_message("#general", "ana", "three", 3.0)
+```
 
-store.mark_read("bo", "#general", 1.0)  # older than the marker: ignored
-store.unread_count("bo", "#general")    # 1  — unchanged, not 2
+##### Example 1
 
-store.unread_count("bo", "#random")     # 0  — unknown channel
+```text
+Input:
+    unread_count("bo", "#general")
+    unread_count("cy", "#general")
+
+Output:
+    2
+    3
+
+Explanation:
+    Neither user has read anything, so everything is unread — except that
+    "two" is bo's own message and never counts against bo.
+```
+
+##### Example 2
+
+```text
+Input:
+    mark_read("bo", "#general", 2.0)
+    unread_count("bo", "#general")
+
+    mark_read("bo", "#general", 1.0)
+    unread_count("bo", "#general")
+
+    unread_count("bo", "#random")
+
+Output:
+    1
+    1
+    0
+
+Explanation:
+    The marker is inclusive, so the message at exactly 2.0 is read and only
+    "three" is newer. Rewinding the marker to 1.0 is ignored, so the count
+    stays at 1 rather than going back up to 2. A channel that doesn't exist
+    has no unreads.
 ```
 
 ---
 
-## Part 4 — search, if time remains (~10 min)
+## Part 4 — search, if time remains
+
+### 4.1 — `search`
 
 Write a function called `search` that returns every message whose `text`
 contains `query`, **newest first**.
@@ -197,19 +406,42 @@ contains `query`, **newest first**.
 - `channel=None` searches everywhere; passing a channel scopes results to it.
 - No match returns `[]`.
 
-```python
-store = MessageStore()
-parent = store.post_message("#general", "ana", "Deploy is red", 1.0)
-store.post_message("#random", "cy", "redis is slow", 2.0)
-store.reply(parent, "bo", "rolled back", 3.0)
+#### Examples
 
-store.search("RED")                     # redis is slow, Deploy is red — case-insensitive
-store.search("rolled")                  # rolled back  — replies are searchable
-store.search("red", channel="#general") # Deploy is red  — scoped
-store.search("nothing")                 # []
+##### Example 1
+
+```text
+Input:
+    parent = post_message("#general", "ana", "Deploy is red", 1.0)
+             post_message("#random",  "cy",  "redis is slow", 2.0)
+             reply(parent, "bo", "rolled back", 3.0)
+
+    search("RED")
+    search("rolled")
+
+Output:
+    ["redis is slow", "Deploy is red"]
+    ["rolled back"]
+
+Explanation:
+    Matching ignores case and matches inside words, so "RED" hits both
+    "Deploy is red" and "redis is slow". Replies are searchable even though
+    they never appear in history().
 ```
 
----
+##### Example 2
+
+```text
+Input:
+    (same messages as above)
+
+    search("red", channel="#general")
+    search("nothing")
+
+Output:
+    ["Deploy is red"]
+    []
+```
 
 Leave the last ~5 minutes for questions.
 
