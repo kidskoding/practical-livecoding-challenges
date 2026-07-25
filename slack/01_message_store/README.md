@@ -209,11 +209,13 @@ store.search("red", channel="#general") # Deploy is red  — scoped
 store.search("nothing")                 # []
 ```
 
+---
+
 Leave the last ~5 minutes for questions.
 
 ---
 
-## What's being evaluated
+## What candidates are being evaluated on
 
 - Working code that matches the spec above. Correctness first, prettiness
   second.
