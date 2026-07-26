@@ -243,7 +243,13 @@ class MessageStore:
 - Type-hint every signature. Python is 3.12, so `X | None` needs no
   `from __future__ import annotations`.
 - One `# --- Part N: <name> ---` comment per README part, methods in part order.
-- One-line comment per method restating the contract in the caller's terms.
+- **One line per method, stating intent only — never the contract.** The stub is
+  usually the first file opened, so a comment like `Newest-first page;
+  \`before\` is exclusive` undoes the entire prompt. Echo the README's dictated
+  sentence instead: `Return a page of a channel's messages.` Ordering,
+  boundaries, and empty-case behavior stay in `interviewer-notes.md`.
+- Signatures do reveal the parameter names and defaults, and that's fine — the
+  candidate needs the API surface. What they must not reveal is behavior.
 - Body is `pass`, never `raise NotImplementedError` — a stub that returns `None`
   fails as a wrong value, not a traceback.
 - Caller supplies timestamps and any ids (`ts: float`); nothing generates
@@ -279,10 +285,10 @@ answers.
   unknown channel, or `["three", "two", "one"]` for an unfiltered call, answers
   a question the candidate was supposed to ask. One happy-path case, shaped to
   show the input and output types and nothing more.
-- **Leaking it through the back sections instead.** The evaluation and
-  complexity sections are the easiest place to give the game away — an
-  edge-case checklist, or a complexity question naming the exact parameter that
-  needs care. Keep both generic; the specifics live in the interviewer notes.
+- **Leaking it through the stub comments.** The likeliest leak of all, and the
+  easiest to miss, because the stub gets written from the full contract while
+  it's fresh in your head. Grep the stub for every rule the README withholds
+  before committing.
 - **Vague about the goal instead of the contract.** "Do something with messages"
   is a bad prompt; "return the page a client would render" is a clear goal with
   a withheld contract. Withhold rules, never intent.

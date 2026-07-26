@@ -5,47 +5,44 @@ class MessageStore:
     # --- Part 1: channel history ---
 
     def post_message(self, channel: str, user: str, text: str, ts: float) -> str:
-        # Store a top-level message in a channel. Return its id.
+        # Record a message in a channel. Return its id.
 
         pass
 
     def history(
         self, channel: str, limit: int = 50, before: str | None = None
     ) -> list[dict]:
-        # Newest-first page of top-level messages. `before` is a message id,
-        # exclusive: return only messages older than it.
+        # Return a page of a channel's messages.
 
         pass
 
     # --- Part 2: threads ---
 
     def reply(self, parent_id: str, user: str, text: str, ts: float) -> str:
-        # Reply to a top-level message. Return the reply's id.
+        # Attach a reply to an existing message. Return the reply's id.
 
         pass
 
     def thread(self, parent_id: str) -> list[dict]:
-        # Oldest-first: the parent followed by all of its replies.
+        # Return the conversation hanging off one message.
 
         pass
 
     # --- Part 3: unread counts ---
 
     def mark_read(self, user: str, channel: str, ts: float) -> None:
-        # Record that `user` has read `channel` up to and including `ts`.
+        # Record how far `user` has read in `channel`.
 
         pass
 
     def unread_count(self, user: str, channel: str) -> int:
-        # Top-level messages newer than the user's read marker, excluding
-        # the user's own messages.
+        # How many messages in `channel` has `user` not seen?
 
         pass
 
     # --- Part 4 (stretch): search ---
 
     def search(self, query: str, channel: str | None = None) -> list[dict]:
-        # Newest-first messages whose text contains `query`, case-insensitive.
-        # Searches replies too. `channel` scopes the search when given.
+        # Find messages by their text, optionally scoped to one channel.
 
         pass
