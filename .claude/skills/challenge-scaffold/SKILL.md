@@ -26,16 +26,21 @@ their shape; `company-framing` decides the company-specific story and problem.
 
 ```text
 <company>/NN_<slug>/
-├── README.md              # the prompt: spec, timed parts, evaluation notes
-└── <slug>.py              # stubs, `pass` bodies — the file solved in
+├── README.md              # the prompt the candidate reads — underspecified
+├── <slug>.py              # stubs, `pass` bodies — the file solved in
+└── interviewer-notes.md   # spoilers: rubric + the withheld contract
 ```
 
 - Lowercase company dir (`slack/`, `cloudflare/`, `neuralink/`), zero-padded
   challenge number, snake_case slug naming the *thing built*, not the pattern.
 - Module filename matches the slug.
-- Two files, nothing else. No test file, no `conftest.py`, no `__init__.py`, no
-  per-challenge config. The repo root `pyproject.toml` is `uv init` output with
-  zero dependencies — leave it that way.
+- Three files, nothing else. No test file, no `conftest.py`, no `__init__.py`,
+  no per-challenge config. The repo root `pyproject.toml` is `uv init` output
+  with zero dependencies — leave it that way.
+- **The notes are a separate file, never a section of the README.** Scrolling
+  past the last part shouldn't put the answers on screen — a candidate who
+  reads to the end of the prompt would have the contract handed to them by
+  accident.
 
 **There are no tests in this repo, and pytest is not installed.** A practical
 interview hands you a prompt and a blank editor; a suite hands over the edge
@@ -49,32 +54,20 @@ minute 20.
 
 ## README Format
 
-Sections in this order:
+The README is the candidate-facing prompt and holds nothing else. Sections in
+this order:
 
 1. `# <Company> — <Duration> Practical: <Title>`
 2. The scenario in two or three sentences, plus the data shape (dict keys and
-   types) — guessing a field name isn't a skill. Then a line saying the prompt
-   is deliberately underspecified, that asking is graded, and that
-   `## Interviewer notes` holds the answers for afterwards.
+   types) — guessing a field name isn't a skill.
 3. `## Part N — <name>` — the body of the prompt, see below. No per-part time
    estimate in the heading: the total duration is in the title, and a candidate
    watching a per-part clock is optimizing the wrong thing. Size the parts so
    the whole thing fits the duration with room for questions at the end, then
    leave the pacing unstated.
-4. `## What candidates are being evaluated on` — questions asked before code
-   goes first, since that's what the withheld contract is there to test. Then an
-   explicit not-evaluated list (scaling, persistence, auth) so the candidate
-   doesn't wander out of scope. **Don't enumerate the edge cases here.** Listing
-   "unknown channel, empty result, cursor at the end" hands over the exact
-   questions the parts withheld — say that edge cases exist and finding them is
-   graded, and stop there.
-5. `## Complexity to be ready to discuss` — 3–5 questions, phrased generically
-   ("what it costs in your layout", "which work you do on write versus read")
-   rather than named against a specific function. A question like "`history`
-   with a `before` cursor — what does resolving it cost?" tells the candidate
-   the cursor is worth resolving carefully, which is a design hint.
-6. `## Interviewer notes` — the withheld contract, in full. Last section, see
-   below.
+
+That's the whole file. The rubric, the complexity questions, and the withheld
+contract all live in `interviewer-notes.md`.
 
 ## Writing A Part (the important bit)
 
@@ -197,6 +190,13 @@ Output:
   rule you meant to withhold.
 - A second example is justified only when one can't show the input shape at all
   (a function whose arguments vary in kind). Never add one to cover an edge case.
+- **Every parameter appears in at least one call.** Withholding the contract is
+  not withholding the task. If a function takes a cursor, some line has to pass
+  one, or the candidate never learns what the argument is for — they'll ask
+  "what is `before`?" instead of "is `before` inclusive?", and the round is
+  spent on comprehension rather than judgment. Show the argument, keep its
+  behavior open: `the next page of two, continuing from third` names the job
+  without settling the boundary.
 - **Every function gets one, including the ones that look self-evident.** A
   function returning nothing still needs its argument shape pinned and its
   no-return-value stated: `Output: nothing; bo's read position in #general is
@@ -286,6 +286,10 @@ answers.
 - **Vague about the goal instead of the contract.** "Do something with messages"
   is a bad prompt; "return the page a client would render" is a clear goal with
   a withheld contract. Withhold rules, never intent.
+- **A parameter that never appears in any example.** The candidate can't ask a
+  sharp question about an argument whose purpose they're still guessing at.
+  Read the prompt back cold: could someone who has never seen this build the
+  right *shape* from it? If not, it's underspecified in the wrong dimension.
 - **Forgetting the interviewer notes.** Without them nothing can be checked
   after the attempt, and the prompt becomes a guessing game with no answer key.
 - **Asserting through a function the candidate hasn't written.** Setup describes
