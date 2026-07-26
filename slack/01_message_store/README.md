@@ -18,11 +18,6 @@ A message is a plain `dict` like the one shown below:
 }
 ```
 
-This prompt is deliberately underspecified, the way the real round is. Ask
-before you write — the questions you ask are graded as heavily as the code.
-`## Interviewer notes` at the bottom holds the answers; read it only when you're
-done, or when you've run out of interviewer to ask.
-
 ---
 
 ## Part 1 — channel history
@@ -118,6 +113,19 @@ Output:
 Write a function called `mark_read` that records how far a user has read in a
 channel.
 
+#### Example
+
+```text
+#general holds  "one" (ana, ts 1.0)
+                "two" (bo,  ts 2.0)
+
+Input:
+    user = "bo", channel = "#general", ts = 2.0
+
+Output:
+    nothing; bo's read position in #general is recorded
+```
+
 ### 3.2 — `unread_count`
 
 Then write a function called `unread_count` that returns how many messages in a
@@ -147,6 +155,19 @@ Output:
 
 Write a function called `search` that finds messages by their text, optionally
 scoped to one channel.
+
+#### Example
+
+```text
+#general holds  "deploy is red" (ana, ts 1.0)
+#random  holds  "lunch?"        (cy,  ts 2.0)
+
+Input:
+    query = "red"
+
+Output:
+    ["deploy is red"]
+```
 
 ---
 

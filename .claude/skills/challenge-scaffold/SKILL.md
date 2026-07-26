@@ -197,8 +197,16 @@ Output:
   rule you meant to withhold.
 - A second example is justified only when one can't show the input shape at all
   (a function whose arguments vary in kind). Never add one to cover an edge case.
-- Some functions need no example — `mark_read` takes a user, a channel, and a
-  timestamp, and that's evident from the sentence.
+- **Every function gets one, including the ones that look self-evident.** A
+  function returning nothing still needs its argument shape pinned and its
+  no-return-value stated: `Output: nothing; bo's read position in #general is
+  recorded`. A missing example reads as an oversight and makes the candidate
+  wonder what else was left out.
+- Choose example data that can't be reverse-engineered into the withheld rules.
+  A search example matching two messages leaks the result ordering; one that
+  matches a single message shows the shape and nothing else. Same for a case
+  whose query differs in case from the text — that answers whether matching is
+  case-sensitive.
 
 ### Interviewer notes
 
